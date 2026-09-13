@@ -3,180 +3,519 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>REGISTRO DE EFECTIVO</title>
+  <title>Tesorería - Registro de Efectivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, sans-serif; background: #f1f5f9; padding: 20px; margin: 0; }
-    .card { background: white; max-width: 440px; margin: auto; padding: 22px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    h2 { text-align: center; margin-top: 0; color: #1e3a8a; }
-    .balance-box { background: #e2e8f0; text-align: center; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 1.2rem; font-weight: bold; }
-    label { display: block; margin-top: 10px; font-weight: 600; color: #475569; font-size: 0.9rem; }
-    select, input { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
-    button { width: 100%; margin-top: 18px; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    button:hover { background: #1e40af; }
-    button:disabled { opacity: 0.5; }
-    .tesoreria { border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 12px; }
-    .btn-tesoreria { background: #334155; }
-    .btn-tesoreria:hover { background: #1e293b; }
-    .msg { padding: 10px; margin-top: 12px; border-radius: 6px; display: none; text-align: center; font-size: 0.9rem; }
-    .msg-ok { background: #dcfce7; color: #166534; }
-    .msg-err { background: #fee2e2; color: #991b1b; }
+    :root {
+      --primary: #4c1d95;
+      --primary-hover: #5b21b6;
+      --primary-light: #f5f3ff;
+      --purple-badge: #6d28d9;
+      --bg: #f7f5fb;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #1e1b4b;
+      --text-muted: #64748b;
+      --shadow: 0 10px 25px -5px rgba(76, 29, 149, 0.07), 0 8px 10px -6px rgba(76, 29, 149, 0.05);
+      --success: #15803d;
+      --success-bg: #dcfce7;
+      --danger: #b91c1c;
+      --danger-bg: #fee2e2;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      padding: 30px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .header-group {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .logo-circle {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: #3b0764;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 10px rgba(59, 7, 100, 0.25);
+    }
+
+    .logo-circle svg {
+      width: 32px;
+      height: 32px;
+      fill: #fbbf24;
+    }
+
+    h1 {
+      font-size: 1.45rem;
+      margin: 0;
+      color: #2e1065;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+
+    /* Navegación por pestañas */
+    .tab-bar {
+      display: flex;
+      background: #ede9fe;
+      padding: 4px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: #6b21a8;
+      font-weight: 600;
+      font-size: 0.88rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(76, 29, 149, 0.12);
+    }
+
+    .app-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 26px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .label-title {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    .label-title .required {
+      color: #dc2626;
+      margin-left: 2px;
+    }
+
+    select, input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      outline: none;
+      transition: all 0.2s;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+
+    select:focus, input:focus {
+      border-color: #7c3aed;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+    }
+
+    /* Selector de tipo en botones pills */
+    .pill-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pill-btn {
+      padding: 11px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .pill-btn.selected {
+      background: #4c1d95;
+      color: white;
+      border-color: #4c1d95;
+      box-shadow: 0 4px 10px rgba(76, 29, 149, 0.2);
+    }
+
+    .saldo-card {
+      background: #f5f3ff;
+      border: 1px solid #ddd6fe;
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .saldo-card span {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #5b21b6;
+    }
+
+    .saldo-card strong {
+      font-size: 1.35rem;
+      color: #3b0764;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: #4c1d95;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(76, 29, 149, 0.25);
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    .submit-btn:hover {
+      background: #3b0764;
+      transform: translateY(-1px);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-box {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+
+    .status-ok { background: var(--success-bg); color: var(--success); }
+    .status-err { background: var(--danger-bg); color: var(--danger); }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <h2>REGISTRO DE EFECTIVO</h2>
-
-  <label for="caja">Caja:</label>
-  <select id="caja" onchange="cargarSaldo()">
-    <option value="" disabled selected>Cargando cajas...</option>
-  </select>
-
-  <div class="balance-box" id="saldoDisplay">Saldo: -- €</div>
-
-  <label for="tipo">Tipo:</label>
-  <select id="tipo">
-    <option value="Gasto">Gasto / Retirada</option>
-    <option value="Ingreso">Ingreso</option>
-  </select>
-
-  <label for="importe">Cantidad (€):</label>
-  <input type="number" step="0.01" id="importe" placeholder="0.00">
-
-  <label for="motivo">¿Para qué? (Motivo):</label>
-  <input type="text" id="motivo" placeholder="Ej. Cambio de monedas">
-
-  <label for="persona">Persona:</label>
-  <input type="text" id="persona" placeholder="Tu nombre">
-
-  <button id="btnMovimiento" onclick="enviarMovimiento()">Registrar Movimiento</button>
-
-  <div class="tesoreria">
-    <label style="color:#0f172a;">🔒 Arqueo / Conteo Real (Tesorería)</label>
-    <input type="number" step="0.01" id="dineroReal" placeholder="Total físico en caja" style="margin-top:6px;">
-    <input type="password" id="pwdTesoreria" placeholder="Contraseña Tesorería" style="margin-top:6px;">
-    <button id="btnArqueo" class="btn-tesoreria" onclick="enviarArqueo()">Ajustar Arqueo</button>
+  <!-- Encabezado con Flor de Lis idéntico al de facturas -->
+  <div class="header-group">
+    <div class="logo-circle">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 2C11.5 4 10.2 6.3 8.5 7.7C7.3 8.6 6 9.3 4.5 9.7C4.1 9.8 4 10.3 4.3 10.6C5.5 11.8 7.3 12.3 8.9 11.9C8.3 13.5 7.6 15 6.5 16.2C6.1 16.7 6.4 17.5 7.1 17.5C8.6 17.5 10.2 16.7 11.2 15.6C11.2 17.4 11.1 19.3 10 20.7C9.7 21.1 10 21.7 10.5 21.7H13.5C14 21.7 14.3 21.1 14 20.7C12.9 19.3 12.8 17.4 12.8 15.6C13.8 16.7 15.4 17.5 16.9 17.5C17.6 17.5 17.9 16.7 17.5 16.2C16.4 15 15.7 13.5 15.1 11.9C16.7 12.3 18.5 11.8 19.7 10.6C20 10.3 19.9 9.8 19.5 9.7C18 9.3 16.7 8.6 15.5 7.7C13.8 6.3 12.5 4 12 2Z"/>
+      </svg>
+    </div>
+    <h1>Tesorería Grupo Scout Pío XII</h1>
+    <div class="subtitle">Control y Registro de Efectivo</div>
   </div>
 
-  <div id="status" class="msg"></div>
-</div>
+  <!-- Pestañas para separar páginas -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabMovimientos" onclick="cambiarPagina('movimientos')">Movimientos</button>
+    <button class="tab-btn" id="tabArqueo" onclick="cambiarPagina('arqueo')">Arqueo Tesorería</button>
+  </div>
 
-<script>
-  // ==========================================================
-  // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
-  // ==========================================================
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPwlwr0qoTxPUZSRiH-eVfKT6y9NWpA4rAk7Mqs-YGhEo_fEBFn7UmhE9x5lZBR8iv/exec";
+  <!-- PÁGINA 1: REGISTRO DE MOVIMIENTO -->
+  <div class="app-card" id="pageMovimientos">
+    <div class="form-group">
+      <label class="label-title">CAJA DE EFECTIVO <span class="required">*</span></label>
+      <select id="cajaMovimiento" onchange="cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay')">
+        <option value="" disabled selected>Cargando cajas...</option>
+      </select>
+    </div>
 
-  window.onload = function() {
-    fetch(`${SCRIPT_URL}?action=getCajas`)
-      .then(res => res.json())
-      .then(data => {
-        const select = document.getElementById('caja');
-        select.innerHTML = '';
-        data.cajas.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c;
-          opt.textContent = c;
-          select.appendChild(opt);
-        });
-        cargarSaldo();
+    <div class="saldo-card">
+      <span>Saldo teórico actual</span>
+      <strong id="saldoMovimientoDisplay">-- €</strong>
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">TIPO DE OPERACIÓN <span class="required">*</span></label>
+      <div class="pill-group">
+        <div class="pill-btn selected" id="pillGasto" onclick="seleccionarTipo('Gasto')">Gasto / Retirada</div>
+        <div class="pill-btn" id="pillIngreso" onclick="seleccionarTipo('Ingreso')">Ingreso</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">CANTIDAD EXACTA (€) <span class="required">*</span></label>
+      <input type="number" step="0.01" min="0.01" id="importe" placeholder="0.00">
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">CONCEPTO / ¿PARA QUÉ? <span class="required">*</span></label>
+      <input type="text" id="motivo" placeholder="Ej: Compra pan, Cambio de monedas...">
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">PERSONA QUE LO REALIZA <span class="required">*</span></label>
+      <input type="text" id="persona" placeholder="Nombre y Apellido">
+    </div>
+
+    <button class="submit-btn" id="btnMovimiento" onclick="enviarMovimiento()">Registrar Movimiento</button>
+  </div>
+
+  <!-- PÁGINA 2: ARQUEO DE TESORERÍA -->
+  <div class="app-card" id="pageArqueo" style="display: none;">
+    <div class="form-group">
+      <label class="label-title">CAJA A CONTAR / AJUSTAR <span class="required">*</span></label>
+      <select id="cajaArqueo" onchange="cargarSaldo('cajaArqueo', 'saldoArqueoDisplay')">
+        <option value="" disabled selected>Cargando cajas...</option>
+      </select>
+    </div>
+
+    <div class="saldo-card">
+      <span>Saldo esperado en sistema</span>
+      <strong id="saldoArqueoDisplay">-- €</strong>
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">DINERO REAL ENCONTRADO EN CAJA (€) <span class="required">*</span></label>
+      <input type="number" step="0.01" min="0" id="dineroReal" placeholder="Conteo físico total">
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">CONTRASEÑA DE TESORERÍA <span class="required">*</span></label>
+      <input type="password" id="pwdTesoreria" placeholder="Introduce la contraseña">
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">RESPONSABLE DE ARQUEO</label>
+      <input type="text" id="personaArqueo" placeholder="Tesorería / Tu nombre">
+    </div>
+
+    <button class="submit-btn" id="btnArqueo" onclick="enviarArqueo()">Guardar y Reajustar Caja</button>
+  </div>
+
+  <div id="statusAlert" class="status-box"></div>
+
+  <script>
+    // =========================================================================
+    // PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
+    // =========================================================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3et_b_AhDPAJLC6H8GlCqiRuKo1UBZlzK2PO24AASKYFIPRSJXqSs90Yn_ygpWMuF/exec";
+
+    let tipoSeleccionado = "Gasto";
+
+    window.onload = function() {
+      cargarCajas();
+    };
+
+    function cambiarPagina(pestana) {
+      const pageMov = document.getElementById('pageMovimientos');
+      const pageArq = document.getElementById('pageArqueo');
+      const tabMov = document.getElementById('tabMovimientos');
+      const tabArq = document.getElementById('tabArqueo');
+
+      if (pestana === 'movimientos') {
+        pageMov.style.display = 'block';
+        pageArq.style.display = 'none';
+        tabMov.classList.add('active');
+        tabArq.classList.remove('active');
+        cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
+      } else {
+        pageMov.style.display = 'none';
+        pageArq.style.display = 'block';
+        tabArq.classList.add('active');
+        tabMov.classList.remove('active');
+        cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+      }
+    }
+
+    function seleccionarTipo(tipo) {
+      tipoSeleccionado = tipo;
+      document.getElementById('pillGasto').classList.toggle('selected', tipo === 'Gasto');
+      document.getElementById('pillIngreso').classList.toggle('selected', tipo === 'Ingreso');
+    }
+
+    function mostrarAviso(texto, esError) {
+      const box = document.getElementById('statusAlert');
+      box.innerText = texto;
+      box.className = `status-box ${esError ? 'status-err' : 'status-ok'}`;
+      box.style.display = 'block';
+      setTimeout(() => { box.style.display = 'none'; }, 6000);
+    }
+
+    function cargarCajas() {
+      fetch(`${SCRIPT_URL}?action=getCajas`)
+        .then(res => res.json())
+        .then(data => {
+          const s1 = document.getElementById('cajaMovimiento');
+          const s2 = document.getElementById('cajaArqueo');
+          s1.innerHTML = '';
+          s2.innerHTML = '';
+          data.cajas.forEach(c => {
+            s1.appendChild(new Option(c, c));
+            s2.appendChild(new Option(c, c));
+          });
+          cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
+          cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+        })
+        .catch(() => mostrarAviso("Error al conectar con la base de datos.", true));
+    }
+
+    function cargarSaldo(selectId, displayId) {
+      const select = document.getElementById(selectId);
+      const caja = select.value;
+      if (!caja) return;
+
+      const display = document.getElementById(displayId);
+      display.innerText = '...';
+
+      fetch(`${SCRIPT_URL}?action=getSaldo&caja=${encodeURIComponent(caja)}`)
+        .then(res => res.json())
+        .then(data => {
+          display.innerText = Number(data.saldo).toFixed(2) + ' €';
+        })
+        .catch(() => { display.innerText = '0.00 €'; });
+    }
+
+    function enviarMovimiento() {
+      const caja = document.getElementById('cajaMovimiento').value;
+      const importe = document.getElementById('importe').value;
+      const motivo = document.getElementById('motivo').value.trim();
+      const persona = document.getElementById('persona').value.trim();
+
+      if (!importe || Number(importe) <= 0) {
+        mostrarAviso("Introduce un importe válido.", true);
+        return;
+      }
+      if (!persona) {
+        mostrarAviso("Por favor, introduce tu nombre.", true);
+        return;
+      }
+
+      const btn = document.getElementById('btnMovimiento');
+      btn.disabled = true;
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          tipoRegistro: "movimiento",
+          caja: caja,
+          tipo: tipoSeleccionado,
+          importe: importe,
+          motivo: motivo,
+          persona: persona
+        })
       })
-      .catch(() => mostrarAviso("Error conectando con el servidor.", true));
-  };
-
-  function mostrarAviso(txt, esError) {
-    const el = document.getElementById('status');
-    el.innerText = txt;
-    el.className = `msg ${esError ? 'msg-err' : 'msg-ok'}`;
-    el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 6000);
-  }
-
-  function cargarSaldo() {
-    const caja = document.getElementById('caja').value;
-    document.getElementById('saldoDisplay').innerText = "Consultando...";
-    fetch(`${SCRIPT_URL}?action=getSaldo&caja=${encodeURIComponent(caja)}`)
       .then(res => res.json())
-      .then(data => {
-        document.getElementById('saldoDisplay').innerText = `Saldo: ${Number(data.saldo).toFixed(2)} €`;
+      .then(res => {
+        btn.disabled = false;
+        if (res.exito) {
+          mostrarAviso(`Registrado con éxito. Nuevo saldo en ${caja}: ${res.nuevoSaldo.toFixed(2)} €`, false);
+          document.getElementById('importe').value = '';
+          document.getElementById('motivo').value = '';
+          document.getElementById('saldoMovimientoDisplay').innerText = res.nuevoSaldo.toFixed(2) + ' €';
+        } else {
+          mostrarAviso(res.error || "Error al registrar", true);
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        mostrarAviso("Error de conexión al registrar.", true);
       });
-  }
-
-  function enviarMovimiento() {
-    const datos = {
-      tipoRegistro: "movimiento",
-      caja: document.getElementById('caja').value,
-      tipo: document.getElementById('tipo').value,
-      importe: document.getElementById('importe').value,
-      motivo: document.getElementById('motivo').value,
-      persona: document.getElementById('persona').value
-    };
-
-    if (!datos.importe || Number(datos.importe) <= 0 || !datos.persona) {
-      mostrarAviso("Completa el importe y tu nombre.", true);
-      return;
     }
 
-    document.getElementById('btnMovimiento').disabled = true;
-    fetch(SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(datos)
-    })
-    .then(res => res.json())
-    .then(res => {
-      document.getElementById('btnMovimiento').disabled = false;
-      if (res.exito) {
-        mostrarAviso(`Guardado. Saldo actual: ${res.nuevoSaldo.toFixed(2)} €`, false);
-        document.getElementById('importe').value = '';
-        document.getElementById('motivo').value = '';
-        document.getElementById('saldoDisplay').innerText = `Saldo: ${res.nuevoSaldo.toFixed(2)} €`;
-      } else {
-        mostrarAviso(res.error || "Error al guardar", true);
+    function enviarArqueo() {
+      const caja = document.getElementById('cajaArqueo').value;
+      const dineroReal = document.getElementById('dineroReal').value;
+      const pwd = document.getElementById('pwdTesoreria').value;
+      const persona = document.getElementById('personaArqueo').value.trim() || "Tesorería";
+
+      if (dineroReal === '' || isNaN(dineroReal)) {
+        mostrarAviso("Indica el dinero contado en la caja.", true);
+        return;
       }
-    })
-    .catch(() => {
-      document.getElementById('btnMovimiento').disabled = false;
-      mostrarAviso("Fallo en la comunicación con el servidor.", true);
-    });
-  }
+      if (!pwd) {
+        mostrarAviso("Introduce la contraseña de tesorería.", true);
+        return;
+      }
 
-  function enviarArqueo() {
-    const datos = {
-      tipoRegistro: "arqueo",
-      caja: document.getElementById('caja').value,
-      dineroReal: document.getElementById('dineroReal').value,
-      password: document.getElementById('pwdTesoreria').value,
-      persona: document.getElementById('persona').value || "Tesorería"
-    };
+      const btn = document.getElementById('btnArqueo');
+      btn.disabled = true;
 
-    if (datos.dineroReal === '' || !datos.password) {
-      mostrarAviso("Indica el dinero contado y la clave.", true);
-      return;
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          tipoRegistro: "arqueo",
+          caja: caja,
+          dineroReal: dineroReal,
+          password: pwd,
+          persona: persona
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        btn.disabled = false;
+        if (res.exito) {
+          const diff = res.desajuste;
+          let msj = `Arqueo guardado en ${caja}. `;
+          msj += diff === 0 
+            ? "Caja perfectamente cuadrada." 
+            : `Desajuste registrado: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} €`;
+
+          mostrarAviso(msj, false);
+          document.getElementById('dineroReal').value = '';
+          document.getElementById('pwdTesoreria').value = '';
+          document.getElementById('saldoArqueoDisplay').innerText = res.nuevoSaldo.toFixed(2) + ' €';
+        } else {
+          mostrarAviso(res.error || "Error al realizar el arqueo.", true);
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        mostrarAviso("Error de conexión con el servidor.", true);
+      });
     }
-
-    document.getElementById('btnArqueo').disabled = true;
-    fetch(SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(datos)
-    })
-    .then(res => res.json())
-    .then(res => {
-      document.getElementById('btnArqueo').disabled = false;
-      if (res.exito) {
-        mostrarAviso(`Arqueo realizado. Ajuste: ${res.desajuste.toFixed(2)} €`, false);
-        document.getElementById('dineroReal').value = '';
-        document.getElementById('pwdTesoreria').value = '';
-        document.getElementById('saldoDisplay').innerText = `Saldo: ${res.nuevoSaldo.toFixed(2)} €`;
-      } else {
-        mostrarAviso(res.error || "Error en arqueo", true);
-      }
-    })
-    .catch(() => {
-      document.getElementById('btnArqueo').disabled = false;
-      mostrarAviso("Fallo en la comunicación con el servidor.", true);
-    });
-  }
-</script>
-
+  </script>
 </body>
 </html>
