@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REGISTRO DE EFECTIVO</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f1f5f9; padding: 20px; margin: 0; }
+    .card { background: white; max-width: 440px; margin: auto; padding: 22px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    h2 { text-align: center; margin-top: 0; color: #1e3a8a; }
+    .balance-box { background: #e2e8f0; text-align: center; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 1.2rem; font-weight: bold; }
+    label { display: block; margin-top: 10px; font-weight: 600; color: #475569; font-size: 0.9rem; }
+    select, input { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; margin-top: 18px; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    button:hover { background: #1e40af; }
+    button:disabled { opacity: 0.5; }
+    .tesoreria { border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 12px; }
+    .btn-tesoreria { background: #334155; }
+    .btn-tesoreria:hover { background: #1e293b; }
+    .msg { padding: 10px; margin-top: 12px; border-radius: 6px; display: none; text-align: center; font-size: 0.9rem; }
+    .msg-ok { background: #dcfce7; color: #166534; }
+    .msg-err { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>REGISTRO DE EFECTIVO</h2>
+
+  <label for="caja">Caja:</label>
+  <select id="caja" onchange="cargarSaldo()">
+    <option value="" disabled selected>Cargando cajas...</option>
+  </select>
+
+  <div class="balance-box" id="saldoDisplay">Saldo: -- €</div>
+
+  <label for="tipo">Tipo:</label>
+  <select id="tipo">
+    <option value="Gasto">Gasto / Retirada</option>
+    <option value="Ingreso">Ingreso</option>
+  </select>
+
+  <label for="importe">Cantidad (€):</label>
+  <input type="number" step="0.01" id="importe" placeholder="0.00">
+
+  <label for="motivo">¿Para qué? (Motivo):</label>
+  <input type="text" id="motivo" placeholder="Ej. Cambio de monedas">
+
+  <label for="persona">Persona:</label>
+  <input type="text" id="persona" placeholder="Tu nombre">
+
+  <button id="btnMovimiento" onclick="enviarMovimiento()">Registrar Movimiento</button>
+
+  <div class="tesoreria">
+    <label style="color:#0f172a;">🔒 Arqueo / Conteo Real (Tesorería)</label>
+    <input type="number" step="0.01" id="dineroReal" placeholder="Total físico en caja" style="margin-top:6px;">
+    <input type="password" id="pwdTesoreria" placeholder="Contraseña Tesorería" style="margin-top:6px;">
+    <button id="btnArqueo" class="btn-tesoreria" onclick="enviarArqueo()">Ajustar Arqueo</button>
+  </div>
+
+  <div id="status" class="msg"></div>
+</div>
+
+<script>
+  // ==========================================================
+  // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
+  // ==========================================================
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPwlwr0qoTxPUZSRiH-eVfKT6y9NWpA4rAk7Mqs-YGhEo_fEBFn7UmhE9x5lZBR8iv/exec";
+
+  window.onload = function() {
+    fetch(`${SCRIPT_URL}?action=getCajas`)
+      .then(res => res.json())
+      .then(data => {
+        const select = document.getElementById('caja');
+        select.innerHTML = '';
+        data.cajas.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          select.appendChild(opt);
+        });
+        cargarSaldo();
+      })
+      .catch(() => mostrarAviso("Error conectando con el servidor.", true));
+  };
+
+  function mostrarAviso(txt, esError) {
+    const el = document.getElementById('status');
+    el.innerText = txt;
+    el.className = `msg ${esError ? 'msg-err' : 'msg-ok'}`;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 6000);
+  }
+
+  function cargarSaldo() {
+    const caja = document.getElementById('caja').value;
+    document.getElementById('saldoDisplay').innerText = "Consultando...";
+    fetch(`${SCRIPT_URL}?action=getSaldo&caja=${encodeURIComponent(caja)}`)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('saldoDisplay').innerText = `Saldo: ${Number(data.saldo).toFixed(2)} €`;
+      });
+  }
+
+  function enviarMovimiento() {
+    const datos = {
+      tipoRegistro: "movimiento",
+      caja: document.getElementById('caja').value,
+      tipo: document.getElementById('tipo').value,
+      importe: document.getElementById('importe').value,
+      motivo: document.getElementById('motivo').value,
+      persona: document.getElementById('persona').value
+    };
+
+    if (!datos.importe || Number(datos.importe) <= 0 || !datos.persona) {
+      mostrarAviso("Completa el importe y tu nombre.", true);
+      return;
+    }
+
+    document.getElementById('btnMovimiento').disabled = true;
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(datos)
+    })
+    .then(res => res.json())
+    .then(res => {
+      document.getElementById('btnMovimiento').disabled = false;
+      if (res.exito) {
+        mostrarAviso(`Guardado. Saldo actual: ${res.nuevoSaldo.toFixed(2)} €`, false);
+        document.getElementById('importe').value = '';
+        document.getElementById('motivo').value = '';
+        document.getElementById('saldoDisplay').innerText = `Saldo: ${res.nuevoSaldo.toFixed(2)} €`;
+      } else {
+        mostrarAviso(res.error || "Error al guardar", true);
+      }
+    })
+    .catch(() => {
+      document.getElementById('btnMovimiento').disabled = false;
+      mostrarAviso("Fallo en la comunicación con el servidor.", true);
+    });
+  }
+
+  function enviarArqueo() {
+    const datos = {
+      tipoRegistro: "arqueo",
+      caja: document.getElementById('caja').value,
+      dineroReal: document.getElementById('dineroReal').value,
+      password: document.getElementById('pwdTesoreria').value,
+      persona: document.getElementById('persona').value || "Tesorería"
+    };
+
+    if (datos.dineroReal === '' || !datos.password) {
+      mostrarAviso("Indica el dinero contado y la clave.", true);
+      return;
+    }
+
+    document.getElementById('btnArqueo').disabled = true;
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(datos)
+    })
+    .then(res => res.json())
+    .then(res => {
+      document.getElementById('btnArqueo').disabled = false;
+      if (res.exito) {
+        mostrarAviso(`Arqueo realizado. Ajuste: ${res.desajuste.toFixed(2)} €`, false);
+        document.getElementById('dineroReal').value = '';
+        document.getElementById('pwdTesoreria').value = '';
+        document.getElementById('saldoDisplay').innerText = `Saldo: ${res.nuevoSaldo.toFixed(2)} €`;
+      } else {
+        mostrarAviso(res.error || "Error en arqueo", true);
+      }
+    })
+    .catch(() => {
+      document.getElementById('btnArqueo').disabled = false;
+      mostrarAviso("Fallo en la comunicación con el servidor.", true);
+    });
+  }
+</script>
+
+</body>
+</html>
