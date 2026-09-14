@@ -11,8 +11,6 @@
     :root {
       --primary: #4c1d95;
       --primary-hover: #5b21b6;
-      --primary-light: #f5f3ff;
-      --purple-badge: #6d28d9;
       --bg: #f7f5fb;
       --card-bg: #ffffff;
       --border: #e2e8f0;
@@ -75,7 +73,6 @@
       margin-top: 5px;
     }
 
-    /* Navegación por pestañas */
     .tab-bar {
       display: flex;
       background: #ede9fe;
@@ -154,7 +151,6 @@
       box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
     }
 
-    /* Selector de tipo en botones pills */
     .pill-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -230,6 +226,25 @@
       transform: none;
     }
 
+    .secondary-btn {
+      width: 100%;
+      padding: 13px;
+      background: #ede9fe;
+      color: #5b21b6;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    .secondary-btn:hover {
+      background: #ddd6fe;
+    }
+
     .status-box {
       margin-top: 16px;
       padding: 12px;
@@ -242,11 +257,85 @@
 
     .status-ok { background: var(--success-bg); color: var(--success); }
     .status-err { background: var(--danger-bg); color: var(--danger); }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--success-bg);
+      color: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px auto 18px auto;
+      font-size: 32px;
+    }
+
+    .success-summary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .summary-row:last-child {
+      margin-bottom: 0;
+      padding-top: 8px;
+      border-top: 1px dashed #cbd5e1;
+      font-weight: 700;
+    }
+
+    .candado-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .candado-header span {
+      font-size: 2.2rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .candado-header p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .auth-badge {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    .auth-badge button {
+      background: none;
+      border: none;
+      color: #dc2626;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Encabezado con Flor de Lis idéntico al de facturas -->
   <div class="header-group">
     <div class="logo-circle">
       <svg viewBox="0 0 24 24">
@@ -257,10 +346,9 @@
     <div class="subtitle">Control y Registro de Efectivo</div>
   </div>
 
-  <!-- Pestañas para separar páginas -->
-  <div class="tab-bar">
+  <div class="tab-bar" id="tabBar">
     <button class="tab-btn active" id="tabMovimientos" onclick="cambiarPagina('movimientos')">Movimientos</button>
-    <button class="tab-btn" id="tabArqueo" onclick="cambiarPagina('arqueo')">Arqueo Tesorería</button>
+    <button class="tab-btn" id="tabArqueo" onclick="cambiarPagina('arqueo')">PERFIL TESORERÍA</button>
   </div>
 
   <!-- PÁGINA 1: REGISTRO DE MOVIMIENTO -->
@@ -303,8 +391,29 @@
     <button class="submit-btn" id="btnMovimiento" onclick="enviarMovimiento()">Registrar Movimiento</button>
   </div>
 
-  <!-- PÁGINA 2: ARQUEO DE TESORERÍA -->
+  <!-- PÁGINA 2: PERFIL TESORERÍA (PASO 1: BLOQUEO POR CONTRASEÑA) -->
+  <div class="app-card" id="pageLoginTesoreria" style="display: none;">
+    <div class="candado-header">
+      <span>🔒</span>
+      <h2 style="margin: 0; font-size: 1.25rem; color: #1e1b4b;">Acceso a Tesorería</h2>
+      <p>Introduce la contraseña para modificar y cuadrar los saldos físicos de las cajas.</p>
+    </div>
+
+    <div class="form-group">
+      <label class="label-title">CONTRASEÑA DE TESORERÍA <span class="required">*</span></label>
+      <input type="password" id="loginPassword" placeholder="Introduce la contraseña" onkeypress="if(event.key==='Enter') desbloquearTesoreria()">
+    </div>
+
+    <button class="submit-btn" onclick="desbloquearTesoreria()">Desbloquear Panel</button>
+  </div>
+
+  <!-- PÁGINA 2: PERFIL TESORERÍA (PASO 2: PANEL DE ARQUEO DESBLOQUEADO) -->
   <div class="app-card" id="pageArqueo" style="display: none;">
+    <div class="auth-badge">
+      <span>✓ Sesión de Tesorería Activa</span>
+      <button onclick="bloquearTesoreria()">Bloquear</button>
+    </div>
+
     <div class="form-group">
       <label class="label-title">CAJA A CONTAR / AJUSTAR <span class="required">*</span></label>
       <select id="cajaArqueo" onchange="cargarSaldo('cajaArqueo', 'saldoArqueoDisplay')">
@@ -323,16 +432,23 @@
     </div>
 
     <div class="form-group">
-      <label class="label-title">CONTRASEÑA DE TESORERÍA <span class="required">*</span></label>
-      <input type="password" id="pwdTesoreria" placeholder="Introduce la contraseña">
-    </div>
-
-    <div class="form-group">
-      <label class="label-title">RESPONSABLE DE ARQUEO</label>
+      <label class="label-title">RESPONSABLE DEL ARQUEO</label>
       <input type="text" id="personaArqueo" placeholder="Tesorería / Tu nombre">
     </div>
 
     <button class="submit-btn" id="btnArqueo" onclick="enviarArqueo()">Guardar y Reajustar Caja</button>
+  </div>
+
+  <!-- PÁGINA 3: PANTALLA DE CONFIRMACIÓN TRAS REGISTRO -->
+  <div class="app-card" id="pageConfirmacion" style="display: none; text-align: center;">
+    <div class="success-icon">✓</div>
+    <h2 style="margin: 0; color: #1e1b4b; font-size: 1.35rem;" id="confirmTitulo">¡Registro Completado!</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 6px;" id="confirmSubtitulo">El movimiento se ha guardado en el Excel correctamente.</p>
+
+    <div class="success-summary" id="confirmDetalles"></div>
+
+    <button class="submit-btn" onclick="volverAlMenu()">Registrar otro movimiento</button>
+    <button class="secondary-btn" id="btnQuedarse" onclick="quedarseAqui()">Quedarme aquí</button>
   </div>
 
   <div id="statusAlert" class="status-box"></div>
@@ -341,33 +457,73 @@
     // =========================================================================
     // PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
     // =========================================================================
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzziQLiGgLCGfso576VG7pMCfz5hsJTp1fIi_P5Tq1AIww3fve2LCHxRQBVXB4WxFx5/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxgth23XBj8uTN6-mrTLIoToPITiKC1tK3ClSvoDhrkhiLBe39z5Q6gWlSkWSbnSrrr/exec";
 
     let tipoSeleccionado = "Gasto";
+    let ultimaPestanaActiva = "movimientos";
+    let tesoreriaSesionPassword = null; // Guarda la contraseña en memoria tras autenticar
 
     window.onload = function() {
       cargarCajas();
     };
 
     function cambiarPagina(pestana) {
+      ultimaPestanaActiva = pestana;
       const pageMov = document.getElementById('pageMovimientos');
+      const pageLogin = document.getElementById('pageLoginTesoreria');
       const pageArq = document.getElementById('pageArqueo');
+      const pageConf = document.getElementById('pageConfirmacion');
       const tabMov = document.getElementById('tabMovimientos');
       const tabArq = document.getElementById('tabArqueo');
+      const tabBar = document.getElementById('tabBar');
+
+      tabBar.style.display = 'flex';
+      pageConf.style.display = 'none';
 
       if (pestana === 'movimientos') {
         pageMov.style.display = 'block';
+        pageLogin.style.display = 'none';
         pageArq.style.display = 'none';
         tabMov.classList.add('active');
         tabArq.classList.remove('active');
         cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
       } else {
         pageMov.style.display = 'none';
-        pageArq.style.display = 'block';
-        tabArq.classList.add('active');
         tabMov.classList.remove('active');
-        cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+        tabArq.classList.add('active');
+
+        // Si ya puso la clave antes, entra directo al panel de arqueo
+        if (tesoreriaSesionPassword) {
+          pageLogin.style.display = 'none';
+          pageArq.style.display = 'block';
+          cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+        } else {
+          pageLogin.style.display = 'block';
+          pageArq.style.display = 'none';
+          setTimeout(() => document.getElementById('loginPassword').focus(), 150);
+        }
       }
+    }
+
+    function desbloquearTesoreria() {
+      const pwd = document.getElementById('loginPassword').value.trim();
+      if (!pwd) {
+        mostrarAviso("Por favor, escribe la contraseña.", true);
+        return;
+      }
+
+      // Se guarda la contraseña en la sesión del navegador
+      tesoreriaSesionPassword = pwd;
+      document.getElementById('loginPassword').value = '';
+
+      document.getElementById('pageLoginTesoreria').style.display = 'none';
+      document.getElementById('pageArqueo').style.display = 'block';
+      cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+    }
+
+    function bloquearTesoreria() {
+      tesoreriaSesionPassword = null;
+      cambiarPagina('arqueo');
     }
 
     function seleccionarTipo(tipo) {
@@ -418,6 +574,34 @@
         .catch(() => { display.innerText = '0.00 €'; });
     }
 
+    function mostrarPantallaConfirmacion(titulo, subtitulo, filasHTML) {
+      document.getElementById('pageMovimientos').style.display = 'none';
+      document.getElementById('pageLoginTesoreria').style.display = 'none';
+      document.getElementById('pageArqueo').style.display = 'none';
+      document.getElementById('tabBar').style.display = 'none';
+
+      document.getElementById('confirmTitulo').innerText = titulo;
+      document.getElementById('confirmSubtitulo').innerText = subtitulo;
+      document.getElementById('confirmDetalles').innerHTML = filasHTML;
+
+      const btnQuedarse = document.getElementById('btnQuedarse');
+      btnQuedarse.style.display = 'block';
+      btnQuedarse.innerText = 'Quedarme aquí';
+      btnQuedarse.disabled = false;
+
+      document.getElementById('pageConfirmacion').style.display = 'block';
+    }
+
+    function volverAlMenu() {
+      cambiarPagina(ultimaPestanaActiva);
+    }
+
+    function quedarseAqui() {
+      const btn = document.getElementById('btnQuedarse');
+      btn.innerText = '✓ Guardado en esta pantalla';
+      btn.disabled = true;
+    }
+
     function enviarMovimiento() {
       const caja = document.getElementById('cajaMovimiento').value;
       const importe = document.getElementById('importe').value;
@@ -451,10 +635,21 @@
       .then(res => {
         btn.disabled = false;
         if (res.exito) {
-          mostrarAviso(`Registrado con éxito. Nuevo saldo en ${caja}: ${res.nuevoSaldo.toFixed(2)} €`, false);
+          const ahora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          const signo = tipoSeleccionado === "Gasto" ? "-" : "+";
+
+          const resumenHTML = `
+            <div class="summary-row"><span>Caja:</span><strong>${caja}</strong></div>
+            <div class="summary-row"><span>Operación:</span><span>${tipoSeleccionado} (${signo}${Number(importe).toFixed(2)} €)</span></div>
+            <div class="summary-row"><span>Motivo:</span><span>${motivo || "-"}</span></div>
+            <div class="summary-row"><span>Persona:</span><span>${persona}</span></div>
+            <div class="summary-row"><span>Hora:</span><span>${ahora}</span></div>
+            <div class="summary-row"><span>Nuevo saldo resultante:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
+          `;
+
           document.getElementById('importe').value = '';
           document.getElementById('motivo').value = '';
-          document.getElementById('saldoMovimientoDisplay').innerText = res.nuevoSaldo.toFixed(2) + ' €';
+          mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel.", resumenHTML);
         } else {
           mostrarAviso(res.error || "Error al registrar", true);
         }
@@ -468,15 +663,10 @@
     function enviarArqueo() {
       const caja = document.getElementById('cajaArqueo').value;
       const dineroReal = document.getElementById('dineroReal').value;
-      const pwd = document.getElementById('pwdTesoreria').value;
       const persona = document.getElementById('personaArqueo').value.trim() || "Tesorería";
 
       if (dineroReal === '' || isNaN(dineroReal)) {
         mostrarAviso("Indica el dinero contado en la caja.", true);
-        return;
-      }
-      if (!pwd) {
-        mostrarAviso("Introduce la contraseña de tesorería.", true);
         return;
       }
 
@@ -489,7 +679,7 @@
           tipoRegistro: "arqueo",
           caja: caja,
           dineroReal: dineroReal,
-          password: pwd,
+          password: tesoreriaSesionPassword,
           persona: persona
         })
       })
@@ -498,16 +688,26 @@
         btn.disabled = false;
         if (res.exito) {
           const diff = res.desajuste;
-          let msj = `Arqueo guardado en ${caja}. `;
-          msj += diff === 0 
-            ? "Caja perfectamente cuadrada." 
-            : `Desajuste registrado: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} €`;
+          const diffTexto = diff === 0 
+            ? "0.00 € (Cuadrada)" 
+            : `${diff > 0 ? '+' : ''}${diff.toFixed(2)} €`;
 
-          mostrarAviso(msj, false);
+          const resumenHTML = `
+            <div class="summary-row"><span>Caja ajustada:</span><strong>${caja}</strong></div>
+            <div class="summary-row"><span>Efectivo real contado:</span><strong>${Number(dineroReal).toFixed(2)} €</strong></div>
+            <div class="summary-row"><span>Desajuste detectado:</span><span>${diffTexto}</span></div>
+            <div class="summary-row"><span>Responsable:</span><span>${persona}</span></div>
+            <div class="summary-row"><span>Nuevo saldo fijado:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
+          `;
+
           document.getElementById('dineroReal').value = '';
-          document.getElementById('pwdTesoreria').value = '';
-          document.getElementById('saldoArqueoDisplay').innerText = res.nuevoSaldo.toFixed(2) + ' €';
+          mostrarPantallaConfirmacion("¡Arqueo Completado!", "El saldo de la caja ha sido regularizado.", resumenHTML);
         } else {
+          // Si la contraseña no coincide en el servidor, restablece la sesión
+          if (res.error && res.error.includes("Contraseña")) {
+            tesoreriaSesionPassword = null;
+            cambiarPagina('arqueo');
+          }
           mostrarAviso(res.error || "Error al realizar el arqueo.", true);
         }
       })
