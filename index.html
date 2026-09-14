@@ -291,16 +291,31 @@
 
     // Ejecutor JSONP para evitar bloqueos de CORS
     function jsonp(url, callbackName) {
-      const script = document.createElement('script');
-      script.src = `${url}&callback=${callbackName}&_=${Date.now()}`;
-      document.body.appendChild(script);
-      script.onload = () => script.remove();
-      script.onerror = () => mostrarAviso("Error al conectar con el servidor.", true);
-    }
+  const timeoutId = setTimeout(() => {
+    mostrarAviso("Tiempo de espera agotado. Revisa los permisos de Apps Script.", true);
+    const btnMov = document.getElementById('btnMovimiento');
+    const btnArq = document.getElementById('btnArqueo');
+    if (btnMov) btnMov.disabled = false;
+    if (btnArq) btnArq.disabled = false;
+  }, 10000);
 
-    window.onload = function() {
-      cargarCajas();
-    };
+  const prevHandler = window[callbackName];
+  window[callbackName] = function(data) {
+    clearTimeout(timeoutId);
+    if (prevHandler) prevHandler(data);
+  };
+
+  const script = document.createElement('script');
+  script.src = `${url}&callback=${callbackName}&_=${Date.now()}`;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    mostrarAviso("Error cargando respuesta del servidor.", true);
+    document.getElementById('btnMovimiento').disabled = false;
+    document.getElementById('btnArqueo').disabled = false;
+  };
+  document.body.appendChild(script);
+  script.onload = () => script.remove();
+}
 
     function cambiarPagina(pestana) {
       ultimaPestanaActiva = pestana;
