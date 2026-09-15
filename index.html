@@ -281,41 +281,45 @@
 
   <script>
     // =========================================================================
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
+    // URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
     // =========================================================================
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn01dFNAVXpdYP0UsbVnwPSYMiYIrh6Ouv5GZeAC_hTzTTBfpX6sraB4JCQtswHU_h/exec";
-
     let tipoSeleccionado = "Gasto";
     let ultimaPestanaActiva = "movimientos";
     let tesoreriaSesionPassword = null;
 
+    // Disparador inicial al terminar de cargar el DOM
+    window.addEventListener('DOMContentLoaded', () => {
+      cargarCajas();
+    });
+
     // Ejecutor JSONP para evitar bloqueos de CORS
     function jsonp(url, callbackName) {
-  const timeoutId = setTimeout(() => {
-    mostrarAviso("Tiempo de espera agotado. Revisa los permisos de Apps Script.", true);
-    const btnMov = document.getElementById('btnMovimiento');
-    const btnArq = document.getElementById('btnArqueo');
-    if (btnMov) btnMov.disabled = false;
-    if (btnArq) btnArq.disabled = false;
-  }, 10000);
+      const timeoutId = setTimeout(() => {
+        mostrarAviso("Tiempo de espera agotado. Revisa los permisos de Apps Script.", true);
+        const btnMov = document.getElementById('btnMovimiento');
+        const btnArq = document.getElementById('btnArqueo');
+        if (btnMov) btnMov.disabled = false;
+        if (btnArq) btnArq.disabled = false;
+      }, 12000);
 
-  const prevHandler = window[callbackName];
-  window[callbackName] = function(data) {
-    clearTimeout(timeoutId);
-    if (prevHandler) prevHandler(data);
-  };
+      const prevHandler = window[callbackName];
+      window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        if (prevHandler) prevHandler(data);
+      };
 
-  const script = document.createElement('script');
-  script.src = `${url}&callback=${callbackName}&_=${Date.now()}`;
-  script.onerror = () => {
-    clearTimeout(timeoutId);
-    mostrarAviso("Error cargando respuesta del servidor.", true);
-    document.getElementById('btnMovimiento').disabled = false;
-    document.getElementById('btnArqueo').disabled = false;
-  };
-  document.body.appendChild(script);
-  script.onload = () => script.remove();
-}
+      const script = document.createElement('script');
+      script.src = `${url}&callback=${callbackName}&_=${Date.now()}`;
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        mostrarAviso("Error cargando respuesta del servidor.", true);
+        document.getElementById('btnMovimiento').disabled = false;
+        document.getElementById('btnArqueo').disabled = false;
+      };
+      document.body.appendChild(script);
+      script.onload = () => script.remove();
+    }
 
     function cambiarPagina(pestana) {
       ultimaPestanaActiva = pestana;
@@ -447,108 +451,58 @@
     }
 
     function enviarMovimiento() {
-  const caja = document.getElementById('cajaMovimiento').value;
-  const importe = document.getElementById('importe').value;
-  const motivo = document.getElementById('motivo').value.trim();
-  const persona = document.getElementById('persona').value.trim();
+      const caja = document.getElementById('cajaMovimiento').value;
+      const importe = document.getElementById('importe').value;
+      const motivo = document.getElementById('motivo').value.trim();
+      const persona = document.getElementById('persona').value.trim();
 
-  if (!importe || Number(importe) <= 0) {
-    mostrarAviso("Introduce un importe válido.", true);
-    return;
-  }
-  if (!persona) {
-    mostrarAviso("Por favor, introduce tu nombre.", true);
-    return;
-  }
-
-  const btn = document.getElementById('btnMovimiento');
-  btn.disabled = true;
-
-  window.handleRespuestaMovimiento = function(res) {
-    btn.disabled = false;
-    if (res.exito) {
-      const ahora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      const signo = tipoSeleccionado === "Gasto" ? "-" : "+";
-
-      const resumenHTML = `
-        <div class="summary-row"><span>Caja:</span><strong>${caja}</strong></div>
-        <div class="summary-row"><span>Operación:</span><span>${tipoSeleccionado} (${signo}${Number(importe).toFixed(2)} €)</span></div>
-        <div class="summary-row"><span>Motivo:</span><span>${motivo || "-"}</span></div>
-        <div class="summary-row"><span>Persona:</span><span>${persona}</span></div>
-        <div class="summary-row"><span>Hora:</span><span>${ahora}</span></div>
-        <div class="summary-row"><span>Nuevo saldo resultante:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
-      `;
-
-      document.getElementById('importe').value = '';
-      document.getElementById('motivo').value = '';
-      mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel.", resumenHTML);
-    } else {
-      mostrarAviso(res.error || "Error al registrar", true);
-    }
-  };
-
-  const params = new URLSearchParams({
-    action: 'movimiento',
-    caja: caja,
-    tipo: tipoSeleccionado,
-    importe: importe,
-    motivo: motivo,
-    persona: persona
-  });
-
-  jsonp(`${SCRIPT_URL}?${params.toString()}`, 'handleRespuestaMovimiento');
-}
-
-function enviarArqueo() {
-  const caja = document.getElementById('cajaArqueo').value;
-  const dineroReal = document.getElementById('dineroReal').value;
-  const persona = document.getElementById('personaArqueo').value.trim() || "Tesorería";
-
-  if (dineroReal === '' || isNaN(dineroReal)) {
-    mostrarAviso("Indica el dinero contado en la caja.", true);
-    return;
-  }
-
-  const btn = document.getElementById('btnArqueo');
-  btn.disabled = true;
-
-  window.handleRespuestaArqueo = function(res) {
-    btn.disabled = false;
-    if (res.exito) {
-      const diff = res.desajuste;
-      const diffTexto = diff === 0 
-        ? "0.00 € (Cuadrada)" 
-        : `${diff > 0 ? '+' : ''}${diff.toFixed(2)} €`;
-
-      const resumenHTML = `
-        <div class="summary-row"><span>Caja ajustada:</span><strong>${caja}</strong></div>
-        <div class="summary-row"><span>Efectivo real contado:</span><strong>${Number(dineroReal).toFixed(2)} €</strong></div>
-        <div class="summary-row"><span>Desajuste detectado:</span><span>${diffTexto}</span></div>
-        <div class="summary-row"><span>Responsable:</span><span>${persona}</span></div>
-        <div class="summary-row"><span>Nuevo saldo fijado:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
-      `;
-
-      document.getElementById('dineroReal').value = '';
-      mostrarPantallaConfirmacion("¡Arqueo Completado!", "El saldo de la caja ha sido regularizado.", resumenHTML);
-    } else {
-      if (res.error && res.error.includes("Contraseña")) {
-        tesoreriaSesionPassword = null;
-        cambiarPagina('arqueo');
+      if (!importe || Number(importe) <= 0) {
+        mostrarAviso("Introduce un importe válido.", true);
+        return;
       }
-      mostrarAviso(res.error || "Error al realizar el arqueo.", true);
+      if (!persona) {
+        mostrarAviso("Por favor, introduce tu nombre.", true);
+        return;
+      }
+
+      const btn = document.getElementById('btnMovimiento');
+      btn.disabled = true;
+
+      window.handleRespuestaMovimiento = function(res) {
+        btn.disabled = false;
+        if (res.exito) {
+          const ahora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          const signo = tipoSeleccionado === "Gasto" ? "-" : "+";
+
+          const resumenHTML = `
+            <div class="summary-row"><span>Caja:</span><strong>${caja}</strong></div>
+            <div class="summary-row"><span>Operación:</span><span>${tipoSeleccionado} (${signo}${Number(importe).toFixed(2)} €)</span></div>
+            <div class="summary-row"><span>Motivo:</span><span>${motivo || "-"}</span></div>
+            <div class="summary-row"><span>Persona:</span><span>${persona}</span></div>
+            <div class="summary-row"><span>Hora:</span><span>${ahora}</span></div>
+            <div class="summary-row"><span>Nuevo saldo resultante:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
+          `;
+
+          document.getElementById('importe').value = '';
+          document.getElementById('motivo').value = '';
+          mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel.", resumenHTML);
+        } else {
+          mostrarAviso(res.error || "Error al registrar", true);
+        }
+      };
+
+      const params = new URLSearchParams({
+        action: 'movimiento',
+        caja: caja,
+        tipo: tipoSeleccionado,
+        importe: importe,
+        motivo: motivo,
+        persona: persona
+      });
+
+      jsonp(`${SCRIPT_URL}?${params.toString()}`, 'handleRespuestaMovimiento');
     }
-  };
 
-  const params = new URLSearchParams({
-    action: 'arqueo',
-    caja: caja,
-    dineroReal: dineroReal,
-    password: tesoreriaSesionPassword,
-    persona: persona
-  });
-
-  jsonp(`${SCRIPT_URL}?${params.toString()}`, 'handleRespuestaArqueo');
-}
     function enviarArqueo() {
       const caja = document.getElementById('cajaArqueo').value;
       const dineroReal = document.getElementById('dineroReal').value;
@@ -562,18 +516,7 @@ function enviarArqueo() {
       const btn = document.getElementById('btnArqueo');
       btn.disabled = true;
 
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          tipoRegistro: "arqueo",
-          caja: caja,
-          dineroReal: dineroReal,
-          password: tesoreriaSesionPassword,
-          persona: persona
-        })
-      })
-      .then(res => res.json())
-      .then(res => {
+      window.handleRespuestaArqueo = function(res) {
         btn.disabled = false;
         if (res.exito) {
           const diff = res.desajuste;
@@ -598,11 +541,17 @@ function enviarArqueo() {
           }
           mostrarAviso(res.error || "Error al realizar el arqueo.", true);
         }
-      })
-      .catch(() => {
-        btn.disabled = false;
-        mostrarAviso("Error de conexión con el servidor.", true);
+      };
+
+      const params = new URLSearchParams({
+        action: 'arqueo',
+        caja: caja,
+        dineroReal: dineroReal,
+        password: tesoreriaSesionPassword,
+        persona: persona
       });
+
+      jsonp(`${SCRIPT_URL}?${params.toString()}`, 'handleRespuestaArqueo');
     }
   </script>
 </body>
