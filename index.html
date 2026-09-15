@@ -283,42 +283,34 @@
     // =========================================================================
     // URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
     // =========================================================================
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzn01dFNAVXpdYP0UsbVnwPSYMiYIrh6Ouv5GZeAC_hTzTTBfpX6sraB4JCQtswHU_h/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7RBHc8J4BsggkzDwygcCu3f8W4NWR-deV5ZC5xiSLZVesijrI5o_YTfP3NZmzVDFT/exec";
+
     let tipoSeleccionado = "Gasto";
     let ultimaPestanaActiva = "movimientos";
     let tesoreriaSesionPassword = null;
 
-    // Disparador inicial al terminar de cargar el DOM
     window.addEventListener('DOMContentLoaded', () => {
       cargarCajas();
     });
 
-    // Ejecutor JSONP para evitar bloqueos de CORS
-    function jsonp(url, callbackName) {
-      const timeoutId = setTimeout(() => {
-        mostrarAviso("Tiempo de espera agotado. Revisa los permisos de Apps Script.", true);
-        const btnMov = document.getElementById('btnMovimiento');
-        const btnArq = document.getElementById('btnArqueo');
-        if (btnMov) btnMov.disabled = false;
-        if (btnArq) btnArq.disabled = false;
-      }, 12000);
+    async function apiGet(params) {
+      const query = new URLSearchParams(params).toString();
+      const url = `${SCRIPT_URL}?${query}`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const prevHandler = window[callbackName];
-      window[callbackName] = function(data) {
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          signal: controller.signal
+        });
         clearTimeout(timeoutId);
-        if (prevHandler) prevHandler(data);
-      };
-
-      const script = document.createElement('script');
-      script.src = `${url}&callback=${callbackName}&_=${Date.now()}`;
-      script.onerror = () => {
+        return await res.json();
+      } catch (err) {
         clearTimeout(timeoutId);
-        mostrarAviso("Error cargando respuesta del servidor.", true);
-        document.getElementById('btnMovimiento').disabled = false;
-        document.getElementById('btnArqueo').disabled = false;
-      };
-      document.body.appendChild(script);
-      script.onload = () => script.remove();
+        throw err;
+      }
     }
 
     function cambiarPagina(pestana) {
@@ -390,24 +382,32 @@
       setTimeout(() => { box.style.display = 'none'; }, 6000);
     }
 
-    function cargarCajas() {
-      window.handleCajas = function(data) {
-        const s1 = document.getElementById('cajaMovimiento');
-        const s2 = document.getElementById('cajaArqueo');
-        s1.innerHTML = '';
-        s2.innerHTML = '';
-        data.cajas.forEach(c => {
-          s1.appendChild(new Option(c, c));
-          s2.appendChild(new Option(c, c));
-        });
-        cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
-        cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
-      };
+    async function cargarCajas() {
+      const s1 = document.getElementById('cajaMovimiento');
+      const s2 = document.getElementById('cajaArqueo');
+      s1.innerHTML = '<option value="" disabled selected>Cargando cajas...</option>';
+      s2.innerHTML = '<option value="" disabled selected>Cargando cajas...</option>';
 
-      jsonp(`${SCRIPT_URL}?action=getCajas`, 'handleCajas');
+      try {
+        const data = await apiGet({ action: 'getCajas' });
+        if (data && data.cajas) {
+          s1.innerHTML = '';
+          s2.innerHTML = '';
+          data.cajas.forEach(c => {
+            s1.appendChild(new Option(c, c));
+            s2.appendChild(new Option(c, c));
+          });
+          cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
+          cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+        } else {
+          mostrarAviso("No se pudieron obtener las cajas.", true);
+        }
+      } catch (e) {
+        mostrarAviso("Error conectando con el servidor. Revisa los permisos.", true);
+      }
     }
 
-    function cargarSaldo(selectId, displayId) {
+    async function cargarSaldo(selectId, displayId) {
       const select = document.getElementById(selectId);
       const caja = select.value;
       if (!caja) return;
@@ -415,11 +415,12 @@
       const display = document.getElementById(displayId);
       display.innerText = '...';
 
-      window.handleSaldo = function(data) {
-        display.innerText = Number(data.saldo).toFixed(2) + ' €';
-      };
-
-      jsonp(`${SCRIPT_URL}?action=getSaldo&caja=${encodeURIComponent(caja)}`, 'handleSaldo');
+      try {
+        const data = await apiGet({ action: 'getSaldo', caja: caja });
+        display.innerText = Number(data.saldo || 0).toFixed(2) + ' €';
+      } catch (e) {
+        display.innerText = 'Error';
+      }
     }
 
     function mostrarPantallaConfirmacion(titulo, subtitulo, filasHTML) {
@@ -450,7 +451,7 @@
       btn.disabled = true;
     }
 
-    function enviarMovimiento() {
+    async function enviarMovimiento() {
       const caja = document.getElementById('cajaMovimiento').value;
       const importe = document.getElementById('importe').value;
       const motivo = document.getElementById('motivo').value.trim();
@@ -468,8 +469,18 @@
       const btn = document.getElementById('btnMovimiento');
       btn.disabled = true;
 
-      window.handleRespuestaMovimiento = function(res) {
+      try {
+        const res = await apiGet({
+          action: 'movimiento',
+          caja: caja,
+          tipo: tipoSeleccionado,
+          importe: importe,
+          motivo: motivo,
+          persona: persona
+        });
+
         btn.disabled = false;
+
         if (res.exito) {
           const ahora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
           const signo = tipoSeleccionado === "Gasto" ? "-" : "+";
@@ -487,23 +498,15 @@
           document.getElementById('motivo').value = '';
           mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel.", resumenHTML);
         } else {
-          mostrarAviso(res.error || "Error al registrar", true);
+          mostrarAviso(res.error || "Error al registrar.", true);
         }
-      };
-
-      const params = new URLSearchParams({
-        action: 'movimiento',
-        caja: caja,
-        tipo: tipoSeleccionado,
-        importe: importe,
-        motivo: motivo,
-        persona: persona
-      });
-
-      jsonp(`${SCRIPT_URL}?${params.toString()}`, 'handleRespuestaMovimiento');
+      } catch (err) {
+        btn.disabled = false;
+        mostrarAviso("Error al enviar el movimiento al servidor.", true);
+      }
     }
 
-    function enviarArqueo() {
+    async function enviarArqueo() {
       const caja = document.getElementById('cajaArqueo').value;
       const dineroReal = document.getElementById('dineroReal').value;
       const persona = document.getElementById('personaArqueo').value.trim() || "Tesorería";
@@ -516,8 +519,17 @@
       const btn = document.getElementById('btnArqueo');
       btn.disabled = true;
 
-      window.handleRespuestaArqueo = function(res) {
+      try {
+        const res = await apiGet({
+          action: 'arqueo',
+          caja: caja,
+          dineroReal: dineroReal,
+          password: tesoreriaSesionPassword,
+          persona: persona
+        });
+
         btn.disabled = false;
+
         if (res.exito) {
           const diff = res.desajuste;
           const diffTexto = diff === 0 
@@ -541,17 +553,10 @@
           }
           mostrarAviso(res.error || "Error al realizar el arqueo.", true);
         }
-      };
-
-      const params = new URLSearchParams({
-        action: 'arqueo',
-        caja: caja,
-        dineroReal: dineroReal,
-        password: tesoreriaSesionPassword,
-        persona: persona
-      });
-
-      jsonp(`${SCRIPT_URL}?${params.toString()}`, 'handleRespuestaArqueo');
+      } catch (err) {
+        btn.disabled = false;
+        mostrarAviso("Error al conectar con el servidor para el arqueo.", true);
+      }
     }
   </script>
 </body>
