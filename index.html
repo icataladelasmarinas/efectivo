@@ -281,7 +281,7 @@
 
   <script>
     // =========================================================================
-    // URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
+    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
     // =========================================================================
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7RBHc8J4BsggkzDwygcCu3f8W4NWR-deV5ZC5xiSLZVesijrI5o_YTfP3NZmzVDFT/exec";
 
@@ -293,24 +293,48 @@
       cargarCajas();
     });
 
-    async function apiGet(params) {
-      const query = new URLSearchParams(params).toString();
-      const url = `${SCRIPT_URL}?${query}`;
+    // Ejecutor JSONP con nombres de función únicos para evitar colisiones
+    function ejecutarJSONP(params, callback) {
+      const callbackName = 'cb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => {
+        delete window[callbackName];
+        const scriptEl = document.getElementById(callbackName);
+        if (scriptEl) scriptEl.remove();
+        mostrarAviso("Tiempo de espera agotado. Revisa la conexión con Apps Script.", true);
+        const btnMov = document.getElementById('btnMovimiento');
+        const btnArq = document.getElementById('btnArqueo');
+        if (btnMov) btnMov.disabled = false;
+        if (btnArq) btnArq.disabled = false;
+      }, 15000);
 
-      try {
-        const res = await fetch(url, {
-          method: 'GET',
-          signal: controller.signal
-        });
+      window[callbackName] = function(data) {
         clearTimeout(timeoutId);
-        return await res.json();
-      } catch (err) {
+        delete window[callbackName];
+        const scriptEl = document.getElementById(callbackName);
+        if (scriptEl) scriptEl.remove();
+        callback(data);
+      };
+
+      const queryParams = new URLSearchParams(params);
+      queryParams.set('callback', callbackName);
+      queryParams.set('_', Date.now());
+
+      const script = document.createElement('script');
+      script.id = callbackName;
+      script.src = `${SCRIPT_URL}?${queryParams.toString()}`;
+      script.onerror = () => {
         clearTimeout(timeoutId);
-        throw err;
-      }
+        delete window[callbackName];
+        script.remove();
+        mostrarAviso("Error conectando con el servidor.", true);
+        const btnMov = document.getElementById('btnMovimiento');
+        const btnArq = document.getElementById('btnArqueo');
+        if (btnMov) btnMov.disabled = false;
+        if (btnArq) btnArq.disabled = false;
+      };
+
+      document.body.appendChild(script);
     }
 
     function cambiarPagina(pestana) {
@@ -382,45 +406,40 @@
       setTimeout(() => { box.style.display = 'none'; }, 6000);
     }
 
-    async function cargarCajas() {
-      const s1 = document.getElementById('cajaMovimiento');
-      const s2 = document.getElementById('cajaArqueo');
-      s1.innerHTML = '<option value="" disabled selected>Cargando cajas...</option>';
-      s2.innerHTML = '<option value="" disabled selected>Cargando cajas...</option>';
+    function cargarCajas() {
+      ejecutarJSONP({ action: 'getCajas' }, function(data) {
+        const s1 = document.getElementById('cajaMovimiento');
+        const s2 = document.getElementById('cajaArqueo');
+        
+        s1.innerHTML = '<option value="" disabled selected>Selecciona una caja...</option>';
+        s2.innerHTML = '<option value="" disabled selected>Selecciona una caja...</option>';
 
-      try {
-        const data = await apiGet({ action: 'getCajas' });
         if (data && data.cajas) {
-          s1.innerHTML = '';
-          s2.innerHTML = '';
           data.cajas.forEach(c => {
             s1.appendChild(new Option(c, c));
             s2.appendChild(new Option(c, c));
           });
-          cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
-          cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
-        } else {
-          mostrarAviso("No se pudieron obtener las cajas.", true);
         }
-      } catch (e) {
-        mostrarAviso("Error conectando con el servidor. Revisa los permisos.", true);
-      }
+        document.getElementById('saldoMovimientoDisplay').innerText = '-- €';
+        document.getElementById('saldoArqueoDisplay').innerText = '-- €';
+      });
     }
 
-    async function cargarSaldo(selectId, displayId) {
+    function cargarSaldo(selectId, displayId) {
       const select = document.getElementById(selectId);
       const caja = select.value;
-      if (!caja) return;
-
       const display = document.getElementById(displayId);
+
+      if (!caja) {
+        display.innerText = '-- €';
+        return;
+      }
+
       display.innerText = '...';
 
-      try {
-        const data = await apiGet({ action: 'getSaldo', caja: caja });
+      ejecutarJSONP({ action: 'getSaldo', caja: caja }, function(data) {
         display.innerText = Number(data.saldo || 0).toFixed(2) + ' €';
-      } catch (e) {
-        display.innerText = 'Error';
-      }
+      });
     }
 
     function mostrarPantallaConfirmacion(titulo, subtitulo, filasHTML) {
@@ -442,6 +461,11 @@
     }
 
     function volverAlMenu() {
+      // Limpiar formulario y reestablecer selectores
+      document.getElementById('cajaMovimiento').value = "";
+      document.getElementById('saldoMovimientoDisplay').innerText = "-- €";
+      document.getElementById('cajaArqueo').value = "";
+      document.getElementById('saldoArqueoDisplay').innerText = "-- €";
       cambiarPagina(ultimaPestanaActiva);
     }
 
@@ -451,12 +475,16 @@
       btn.disabled = true;
     }
 
-    async function enviarMovimiento() {
+    function enviarMovimiento() {
       const caja = document.getElementById('cajaMovimiento').value;
       const importe = document.getElementById('importe').value;
       const motivo = document.getElementById('motivo').value.trim();
       const persona = document.getElementById('persona').value.trim();
 
+      if (!caja) {
+        mostrarAviso("Por favor, selecciona una caja.", true);
+        return;
+      }
       if (!importe || Number(importe) <= 0) {
         mostrarAviso("Introduce un importe válido.", true);
         return;
@@ -468,20 +496,22 @@
 
       const btn = document.getElementById('btnMovimiento');
       btn.disabled = true;
+      btn.innerText = "Registrando...";
 
-      try {
-        const res = await apiGet({
-          action: 'movimiento',
-          caja: caja,
-          tipo: tipoSeleccionado,
-          importe: importe,
-          motivo: motivo,
-          persona: persona
-        });
+      const params = {
+        action: 'movimiento',
+        caja: caja,
+        tipo: tipoSeleccionado,
+        importe: importe,
+        motivo: motivo,
+        persona: persona
+      };
 
+      ejecutarJSONP(params, function(res) {
         btn.disabled = false;
+        btn.innerText = "Registrar Movimiento";
 
-        if (res.exito) {
+        if (res && res.exito) {
           const ahora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
           const signo = tipoSeleccionado === "Gasto" ? "-" : "+";
 
@@ -491,26 +521,27 @@
             <div class="summary-row"><span>Motivo:</span><span>${motivo || "-"}</span></div>
             <div class="summary-row"><span>Persona:</span><span>${persona}</span></div>
             <div class="summary-row"><span>Hora:</span><span>${ahora}</span></div>
-            <div class="summary-row"><span>Nuevo saldo resultante:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
+            <div class="summary-row"><span>Nuevo saldo resultante:</span><strong>${Number(res.nuevoSaldo).toFixed(2)} €</strong></div>
           `;
 
           document.getElementById('importe').value = '';
           document.getElementById('motivo').value = '';
-          mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel.", resumenHTML);
+          mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel correctamente.", resumenHTML);
         } else {
-          mostrarAviso(res.error || "Error al registrar.", true);
+          mostrarAviso((res && res.error) ? res.error : "Error al registrar movimiento.", true);
         }
-      } catch (err) {
-        btn.disabled = false;
-        mostrarAviso("Error al enviar el movimiento al servidor.", true);
-      }
+      });
     }
 
-    async function enviarArqueo() {
+    function enviarArqueo() {
       const caja = document.getElementById('cajaArqueo').value;
       const dineroReal = document.getElementById('dineroReal').value;
       const persona = document.getElementById('personaArqueo').value.trim() || "Tesorería";
 
+      if (!caja) {
+        mostrarAviso("Por favor, selecciona una caja.", true);
+        return;
+      }
       if (dineroReal === '' || isNaN(dineroReal)) {
         mostrarAviso("Indica el dinero contado en la caja.", true);
         return;
@@ -518,19 +549,21 @@
 
       const btn = document.getElementById('btnArqueo');
       btn.disabled = true;
+      btn.innerText = "Guardando...";
 
-      try {
-        const res = await apiGet({
-          action: 'arqueo',
-          caja: caja,
-          dineroReal: dineroReal,
-          password: tesoreriaSesionPassword,
-          persona: persona
-        });
+      const params = {
+        action: 'arqueo',
+        caja: caja,
+        dineroReal: dineroReal,
+        password: tesoreriaSesionPassword,
+        persona: persona
+      };
 
+      ejecutarJSONP(params, function(res) {
         btn.disabled = false;
+        btn.innerText = "Guardar y Reajustar Caja";
 
-        if (res.exito) {
+        if (res && res.exito) {
           const diff = res.desajuste;
           const diffTexto = diff === 0 
             ? "0.00 € (Cuadrada)" 
@@ -541,22 +574,19 @@
             <div class="summary-row"><span>Efectivo real contado:</span><strong>${Number(dineroReal).toFixed(2)} €</strong></div>
             <div class="summary-row"><span>Desajuste detectado:</span><span>${diffTexto}</span></div>
             <div class="summary-row"><span>Responsable:</span><span>${persona}</span></div>
-            <div class="summary-row"><span>Nuevo saldo fijado:</span><strong>${res.nuevoSaldo.toFixed(2)} €</strong></div>
+            <div class="summary-row"><span>Nuevo saldo fijado:</span><strong>${Number(res.nuevoSaldo).toFixed(2)} €</strong></div>
           `;
 
           document.getElementById('dineroReal').value = '';
           mostrarPantallaConfirmacion("¡Arqueo Completado!", "El saldo de la caja ha sido regularizado.", resumenHTML);
         } else {
-          if (res.error && res.error.includes("Contraseña")) {
+          if (res && res.error && res.error.includes("Contraseña")) {
             tesoreriaSesionPassword = null;
             cambiarPagina('arqueo');
           }
-          mostrarAviso(res.error || "Error al realizar el arqueo.", true);
+          mostrarAviso((res && res.error) ? res.error : "Error al realizar el arqueo.", true);
         }
-      } catch (err) {
-        btn.disabled = false;
-        mostrarAviso("Error al conectar con el servidor para el arqueo.", true);
-      }
+      });
     }
   </script>
 </body>
