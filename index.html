@@ -182,7 +182,7 @@
     <div class="form-group">
       <label class="label-title">CAJA DE EFECTIVO <span class="required">*</span></label>
       <select id="cajaMovimiento" onchange="cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay')">
-        <option value="" disabled selected>Selecciona una caja...</option>
+        <option value="" disabled selected>-- Elige una caja --</option>
         <option value="Caja Azul">Caja Azul</option>
         <option value="Caja Lotería">Caja Lotería</option>
         <option value="Caja Roja Grande">Caja Roja Grande</option>
@@ -250,7 +250,7 @@
     <div class="form-group">
       <label class="label-title">CAJA A CONTAR / AJUSTAR <span class="required">*</span></label>
       <select id="cajaArqueo" onchange="cargarSaldo('cajaArqueo', 'saldoArqueoDisplay')">
-        <option value="" disabled selected>Selecciona una caja...</option>
+        <option value="" disabled selected>-- Elige una caja --</option>
         <option value="Caja Azul">Caja Azul</option>
         <option value="Caja Lotería">Caja Lotería</option>
         <option value="Caja Roja Grande">Caja Roja Grande</option>
@@ -303,7 +303,7 @@
     let ultimaPestanaActiva = "movimientos";
     let tesoreriaSesionPassword = null;
 
-    // Ejecutor JSONP con nombres de función únicos
+    // Ejecutor JSONP con identificador único por consulta
     function ejecutarJSONP(params, callback) {
       const callbackName = 'cb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
       
@@ -366,7 +366,6 @@
         pageArq.style.display = 'none';
         tabMov.classList.add('active');
         tabArq.classList.remove('active');
-        cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay');
       } else {
         pageMov.style.display = 'none';
         tabMov.classList.remove('active');
@@ -375,7 +374,6 @@
         if (tesoreriaSesionPassword) {
           pageLogin.style.display = 'none';
           pageArq.style.display = 'block';
-          cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
         } else {
           pageLogin.style.display = 'block';
           pageArq.style.display = 'none';
@@ -394,7 +392,8 @@
       document.getElementById('loginPassword').value = '';
       document.getElementById('pageLoginTesoreria').style.display = 'none';
       document.getElementById('pageArqueo').style.display = 'block';
-      cargarSaldo('cajaArqueo', 'saldoArqueoDisplay');
+      document.getElementById('cajaArqueo').value = "";
+      document.getElementById('saldoArqueoDisplay').innerText = "-- €";
     }
 
     function bloquearTesoreria() {
@@ -426,7 +425,7 @@
         return;
       }
 
-      display.innerText = '...';
+      display.innerText = 'Consultando...';
 
       ejecutarJSONP({ action: 'getSaldo', caja: caja }, function(data) {
         display.innerText = Number(data.saldo || 0).toFixed(2) + ' €';
@@ -514,6 +513,8 @@
             <div class="summary-row"><span>Nuevo saldo resultante:</span><strong>${Number(res.nuevoSaldo).toFixed(2)} €</strong></div>
           `;
 
+          document.getElementById('cajaMovimiento').value = '';
+          document.getElementById('saldoMovimientoDisplay').innerText = '-- €';
           document.getElementById('importe').value = '';
           document.getElementById('motivo').value = '';
           mostrarPantallaConfirmacion("¡Movimiento Registrado!", "La operación se ha guardado en el Excel correctamente.", resumenHTML);
@@ -567,6 +568,8 @@
             <div class="summary-row"><span>Nuevo saldo fijado:</span><strong>${Number(res.nuevoSaldo).toFixed(2)} €</strong></div>
           `;
 
+          document.getElementById('cajaArqueo').value = '';
+          document.getElementById('saldoArqueoDisplay').innerText = '-- €';
           document.getElementById('dineroReal').value = '';
           mostrarPantallaConfirmacion("¡Arqueo Completado!", "El saldo de la caja ha sido regularizado.", resumenHTML);
         } else {
