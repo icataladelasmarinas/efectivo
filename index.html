@@ -182,7 +182,14 @@
     <div class="form-group">
       <label class="label-title">CAJA DE EFECTIVO <span class="required">*</span></label>
       <select id="cajaMovimiento" onchange="cargarSaldo('cajaMovimiento', 'saldoMovimientoDisplay')">
-        <option value="" disabled selected>Cargando cajas...</option>
+        <option value="" disabled selected>Selecciona una caja...</option>
+        <option value="Caja Azul">Caja Azul</option>
+        <option value="Caja Lotería">Caja Lotería</option>
+        <option value="Caja Roja Grande">Caja Roja Grande</option>
+        <option value="Caja Roja Pequeña">Caja Roja Pequeña</option>
+        <option value="Caja Negra Pequeña">Caja Negra Pequeña</option>
+        <option value="Caja Negra Grande">Caja Negra Grande</option>
+        <option value="Caja Blanca">Caja Blanca</option>
       </select>
     </div>
 
@@ -243,7 +250,14 @@
     <div class="form-group">
       <label class="label-title">CAJA A CONTAR / AJUSTAR <span class="required">*</span></label>
       <select id="cajaArqueo" onchange="cargarSaldo('cajaArqueo', 'saldoArqueoDisplay')">
-        <option value="" disabled selected>Cargando cajas...</option>
+        <option value="" disabled selected>Selecciona una caja...</option>
+        <option value="Caja Azul">Caja Azul</option>
+        <option value="Caja Lotería">Caja Lotería</option>
+        <option value="Caja Roja Grande">Caja Roja Grande</option>
+        <option value="Caja Roja Pequeña">Caja Roja Pequeña</option>
+        <option value="Caja Negra Pequeña">Caja Negra Pequeña</option>
+        <option value="Caja Negra Grande">Caja Negra Grande</option>
+        <option value="Caja Blanca">Caja Blanca</option>
       </select>
     </div>
 
@@ -281,7 +295,7 @@
 
   <script>
     // =========================================================================
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT (TERMINADA EN /exec)
+    // URL DE GOOGLE APPS SCRIPT
     // =========================================================================
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7RBHc8J4BsggkzDwygcCu3f8W4NWR-deV5ZC5xiSLZVesijrI5o_YTfP3NZmzVDFT/exec";
 
@@ -289,11 +303,7 @@
     let ultimaPestanaActiva = "movimientos";
     let tesoreriaSesionPassword = null;
 
-    window.addEventListener('DOMContentLoaded', () => {
-      cargarCajas();
-    });
-
-    // Ejecutor JSONP con nombres de función únicos para evitar colisiones
+    // Ejecutor JSONP con nombres de función únicos
     function ejecutarJSONP(params, callback) {
       const callbackName = 'cb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
       
@@ -406,25 +416,6 @@
       setTimeout(() => { box.style.display = 'none'; }, 6000);
     }
 
-    function cargarCajas() {
-      ejecutarJSONP({ action: 'getCajas' }, function(data) {
-        const s1 = document.getElementById('cajaMovimiento');
-        const s2 = document.getElementById('cajaArqueo');
-        
-        s1.innerHTML = '<option value="" disabled selected>Selecciona una caja...</option>';
-        s2.innerHTML = '<option value="" disabled selected>Selecciona una caja...</option>';
-
-        if (data && data.cajas) {
-          data.cajas.forEach(c => {
-            s1.appendChild(new Option(c, c));
-            s2.appendChild(new Option(c, c));
-          });
-        }
-        document.getElementById('saldoMovimientoDisplay').innerText = '-- €';
-        document.getElementById('saldoArqueoDisplay').innerText = '-- €';
-      });
-    }
-
     function cargarSaldo(selectId, displayId) {
       const select = document.getElementById(selectId);
       const caja = select.value;
@@ -461,7 +452,6 @@
     }
 
     function volverAlMenu() {
-      // Limpiar formulario y reestablecer selectores
       document.getElementById('cajaMovimiento').value = "";
       document.getElementById('saldoMovimientoDisplay').innerText = "-- €";
       document.getElementById('cajaArqueo').value = "";
