@@ -504,28 +504,31 @@
 
     // Helper universal JSONP (sin bloqueos CORS ni problemas de cookies de Drive)
     function llamarScript(accion, params, callback) {
-      const callbackName = 'cb_' + Math.random().toString(36).substr(2, 9);
-      const urlParams = new URLSearchParams(params || {});
-      urlParams.set('action', accion);
-      urlParams.set('callback', callbackName);
-      urlParams.set('_t', Date.now());
+  const urlParams = new URLSearchParams(params || {});
+  urlParams.set('action', accion);
+  urlParams.set('_t', Date.now());
 
-      window[callbackName] = function(res) {
-        delete window[callbackName];
-        if (script.parentNode) script.remove();
-        if (callback) callback(res);
-      };
-
-      const script = document.createElement('script');
-      script.src = `${SCRIPT_URL}?${urlParams.toString()}`;
-      script.onerror = function() {
-        delete window[callbackName];
-        if (script.parentNode) script.remove();
-        alert('Error de conexión con el servidor. Revisa el despliegue de Apps Script.');
-      };
-      document.body.appendChild(script);
+  fetch(`${SCRIPT_URL}?${urlParams.toString()}`, {
+    method: 'GET',
+    redirect: 'follow'
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
     }
-
+    return res.json();
+  })
+  .then(data => {
+    if (callback) callback(data);
+  })
+  .catch(err => {
+    console.error("Detalle del fallo:", err);
+    // Solo avisamos en pantalla si no es una carga silenciosa
+    if (accion !== 'getSaldo') {
+      alert("Error al comunicar con el servidor: " + err.message);
+    }
+  });
+}
     function cambiarPestana(pestana) {
       document.querySelectorAll('.pill-tab').forEach(b => b.classList.remove('active'));
 
