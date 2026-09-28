@@ -499,36 +499,61 @@
     // =========================================================================
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_ECLKFCrtweIpLgd1J0yfRjBD-rsvJLMYNSKsMxnMCgS3sNThqnLuoqwRXJkKkHax/exec";
 
+    let saldosCache = {}; // Memoria local para que el cambio de saldo sea instantáneo
     let saldoTeoricoActual = 0;
     let tesoreriaAutenticada = false;
 
-    // Helper universal JSONP (sin bloqueos CORS ni problemas de cookies de Drive)
-    function llamarScript(accion, params, callback) {
-  const urlParams = new URLSearchParams(params || {});
-  urlParams.set('action', accion);
-  urlParams.set('_t', Date.now());
+    // Conector universal JSONP a prueba de bloqueos CORS
+    function llamarScriptJSONP(accion, params, callback) {
+      const nombreCallback = 'cb_' + Math.floor(Math.random() * 10000000);
+      const urlParams = new URLSearchParams(params || {});
+      urlParams.set('action', accion);
+      urlParams.set('callback', nombreCallback);
+      urlParams.set('_t', Date.now());
 
-  fetch(`${SCRIPT_URL}?${urlParams.toString()}`, {
-    method: 'GET',
-    redirect: 'follow'
-  })
-  .then(res => {
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+      const script = document.createElement('script');
+      script.src = `${SCRIPT_URL}?${urlParams.toString()}`;
+
+      window[nombreCallback] = function(res) {
+        delete window[nombreCallback];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        if (callback) callback(res);
+      };
+
+      script.onerror = function() {
+        delete window[nombreCallback];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        alert('Error de conexión con el servidor de Google. Inténtalo de nuevo.');
+      };
+
+      document.body.appendChild(script);
     }
-    return res.json();
-  })
-  .then(data => {
-    if (callback) callback(data);
-  })
-  .catch(err => {
-    console.error("Detalle del fallo:", err);
-    // Solo avisamos en pantalla si no es una carga silenciosa
-    if (accion !== 'getSaldo') {
-      alert("Error al comunicar con el servidor: " + err.message);
+
+    // Carga inicial en segundo plano al arrancar la web
+    window.addEventListener('DOMContentLoaded', () => {
+      cargarSaldosIniciales();
+    });
+
+    function cargarSaldosIniciales() {
+      llamarScriptJSONP('obtenerResumenTotales', {}, res => {
+        if (res && res.cajas) {
+          res.cajas.forEach(c => {
+            saldosCache[c.caja] = Number(c.saldo) || 0;
+          });
+          // Si ya había una caja seleccionada en pantalla, actualiza su saldo al instante
+          const cMov = document.getElementById('select-caja').value;
+          if (cMov && saldosCache[cMov] !== undefined) {
+            saldoTeoricoActual = saldosCache[cMov];
+            document.getElementById('saldo-teorico-display').innerText = saldoTeoricoActual.toFixed(2) + ' €';
+          }
+          const cTes = document.getElementById('t-select-caja').value;
+          if (cTes && saldosCache[cTes] !== undefined) {
+            document.getElementById('t-saldo-teorico').innerText = saldosCache[cTes].toFixed(2) + ' €';
+          }
+        }
+      });
     }
-  });
-}
+
     function cambiarPestana(pestana) {
       document.querySelectorAll('.pill-tab').forEach(b => b.classList.remove('active'));
 
@@ -604,73 +629,45 @@
       }
     }
 
+    // CAMBIO DE SALDO INMEDIATO (0 SEGUNDOS)
     function actualizarSaldoCajaSeleccionada(caja) {
       const display = document.getElementById('saldo-teorico-display');
-      display.innerText = 'Cargando...';
-
-      llamarScript('getSaldo', { caja: caja }, res => {
-        if (res && res.exito !== false) {
-          saldoTeoricoActual = parseFloat(res.saldo) || 0;
-          display.innerText = saldoTeoricoActual.toFixed(2) + ' €';
-        } else {
-          display.innerText = '-- €';
-        }
-      });
-    }
-
-    function guardarMovimiento(e) {
-      if (e) e.preventDefault();
-      const btn = document.getElementById('btn-guardar-mov');
-      btn.disabled = true;
-      btn.innerText = 'Guardando...';
-
-      const datos = {
-        caja: document.getElementById('select-caja').value,
-        tipo: document.getElementById('input-tipo').value,
-        importe: document.getElementById('input-importe').value,
-        concepto: document.getElementById('input-concepto').value,
-        usuario: document.getElementById('input-usuario').value
-      };
-
-      llamarScript('registrarMovimiento', datos, res => {
-        btn.disabled = false;
-        btn.innerText = 'Registrar Movimiento';
-
-        if (res && res.exito) {
-          document.getElementById('form-movimiento').reset();
-          document.getElementById('select-caja').selectedIndex = 0;
-          document.getElementById('saldo-teorico-display').innerText = '-- €';
-          setTipoOperacion('Gasto / Retirada');
-
-          document.getElementById('recibo-detalle').innerHTML = `
-            <strong>Caja:</strong> ${res.caja}<br>
-            <strong>Operación:</strong> ${res.tipo}<br>
-            <strong>Importe:</strong> ${Number(res.importe).toFixed(2)} €<br>
-            <strong>Concepto:</strong> ${res.concepto}<br>
-            <hr style="border:none; border-top:1px dashed #c0b4de; margin:8px 0;">
-            <strong>Nuevo Saldo en Caja:</strong> ${Number(res.nuevoSaldo).toFixed(2)} €
-          `;
-          mostrarVistaDirecta('panel-exito');
-        } else {
-          alert('Error: ' + ((res && res.error) ? res.error : 'No se pudo registrar'));
-        }
-      });
-      return false;
+      if (saldosCache[caja] !== undefined) {
+        saldoTeoricoActual = saldosCache[caja];
+        display.innerText = saldoTeoricoActual.toFixed(2) + ' €';
+      } else {
+        display.innerText = 'Cargando...';
+        llamarScriptJSONP('getSaldo', { caja: caja }, res => {
+          if (res && res.exito !== false) {
+            saldoTeoricoActual = parseFloat(res.saldo) || 0;
+            saldosCache[caja] = saldoTeoricoActual;
+            display.innerText = saldoTeoricoActual.toFixed(2) + ' €';
+          } else {
+            display.innerText = '0.00 €';
+          }
+        });
+      }
     }
 
     function actualizarSaldoTesoreria(caja) {
       const display = document.getElementById('t-saldo-teorico');
-      display.innerText = 'Cargando...';
-
-      llamarScript('getSaldo', { caja: caja }, res => {
-        if (res && res.exito !== false) {
-          saldoTeoricoActual = parseFloat(res.saldo) || 0;
-          display.innerText = saldoTeoricoActual.toFixed(2) + ' €';
-          calcularDiferencia();
-        } else {
-          display.innerText = '-- €';
-        }
-      });
+      if (saldosCache[caja] !== undefined) {
+        saldoTeoricoActual = saldosCache[caja];
+        display.innerText = saldoTeoricoActual.toFixed(2) + ' €';
+        calcularDiferencia();
+      } else {
+        display.innerText = 'Cargando...';
+        llamarScriptJSONP('getSaldo', { caja: caja }, res => {
+          if (res && res.exito !== false) {
+            saldoTeoricoActual = parseFloat(res.saldo) || 0;
+            saldosCache[caja] = saldoTeoricoActual;
+            display.innerText = saldoTeoricoActual.toFixed(2) + ' €';
+            calcularDiferencia();
+          } else {
+            display.innerText = '0.00 €';
+          }
+        });
+      }
     }
 
     function calcularDiferencia() {
@@ -694,24 +691,70 @@
       }
     }
 
+    function guardarMovimiento(e) {
+      if (e) e.preventDefault();
+      const btn = document.getElementById('btn-guardar-mov');
+      btn.disabled = true;
+      btn.innerText = 'Guardando...';
+
+      const caja = document.getElementById('select-caja').value;
+      const datos = {
+        caja: caja,
+        tipo: document.getElementById('input-tipo').value,
+        importe: document.getElementById('input-importe').value,
+        concepto: document.getElementById('input-concepto').value,
+        usuario: document.getElementById('input-usuario').value
+      };
+
+      llamarScriptJSONP('registrarMovimiento', datos, res => {
+        btn.disabled = false;
+        btn.innerText = 'Registrar Movimiento';
+
+        if (res && res.exito) {
+          // Actualizamos la memoria local con el nuevo saldo resultante
+          saldosCache[caja] = Number(res.nuevoSaldo);
+
+          document.getElementById('form-movimiento').reset();
+          document.getElementById('select-caja').selectedIndex = 0;
+          document.getElementById('saldo-teorico-display').innerText = '-- €';
+          setTipoOperacion('Gasto / Retirada');
+
+          document.getElementById('recibo-detalle').innerHTML = `
+            <strong>Caja:</strong> ${res.caja}<br>
+            <strong>Operación:</strong> ${res.tipo}<br>
+            <strong>Importe:</strong> ${Number(res.importe).toFixed(2)} €<br>
+            <strong>Concepto:</strong> ${res.concepto}<br>
+            <hr style="border:none; border-top:1px dashed #c0b4de; margin:8px 0;">
+            <strong>Nuevo Saldo en Caja:</strong> ${Number(res.nuevoSaldo).toFixed(2)} €
+          `;
+          mostrarVistaDirecta('panel-exito');
+        } else {
+          alert('Error: ' + ((res && res.error) ? res.error : 'No se pudo registrar'));
+        }
+      });
+      return false;
+    }
+
     function guardarArqueo(e) {
       if (e) e.preventDefault();
       const btn = document.getElementById('btn-guardar-tes');
       btn.disabled = true;
       btn.innerText = 'Ajustando...';
 
+      const caja = document.getElementById('t-select-caja').value;
       const datos = {
         password: 'TESORERIA',
-        caja: document.getElementById('t-select-caja').value,
+        caja: caja,
         nuevoSaldo: document.getElementById('t-saldo-real').value,
         motivo: document.getElementById('t-motivo').value
       };
 
-      llamarScript('ajustarSaldoTesoreria', datos, res => {
+      llamarScriptJSONP('ajustarSaldoTesoreria', datos, res => {
         btn.disabled = false;
         btn.innerText = 'Ajustar Saldo en Excel';
 
         if (res && res.exito) {
+          saldosCache[caja] = Number(res.nuevoSaldo);
           bloquearTesoreria();
 
           document.getElementById('recibo-detalle').innerHTML = `
@@ -736,7 +779,7 @@
       loading.style.display = 'block';
       table.style.display = 'none';
 
-      llamarScript('obtenerResumenTotales', {}, res => {
+      llamarScriptJSONP('obtenerResumenTotales', {}, res => {
         if (res && res.exito !== false) {
           document.getElementById('global-saldo').innerText = Number(res.totalSaldo).toFixed(2) + ' €';
           document.getElementById('global-gastos').innerText = Number(res.totalGastos).toFixed(2) + ' €';
@@ -744,6 +787,7 @@
           const tbody = document.getElementById('totales-tbody');
           tbody.innerHTML = '';
           res.cajas.forEach(f => {
+            saldosCache[f.caja] = Number(f.saldo) || 0;
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td><strong>${f.caja}</strong></td>
